@@ -3,6 +3,7 @@ package br.com.taxisimples.yaml.fixtures;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -15,10 +16,14 @@ import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceContext;
 
 import org.hibernate.SessionFactory;
+import org.hibernate.annotations.CollectionOfElements;
+import org.hibernate.annotations.MapKeyManyToMany;
 import org.hibernate.ejb.HibernateEntityManagerFactory;
 import org.hibernate.engine.SessionFactoryImplementor;
 import org.hibernate.metadata.ClassMetadata;
 import org.hibernate.type.BagType;
+import org.hibernate.type.BigDecimalType;
+import org.hibernate.type.MapType;
 import org.hibernate.type.Type;
 import org.ho.yaml.Yaml;
 import org.springframework.stereotype.Service;
@@ -70,17 +75,54 @@ public class YamlFixtures implements Fixture {
 						field.setAccessible(true);
 						
 						if (propertieType.isCollectionType()) {
-							BagType bagType = (BagType)propertieType;
-							List<Object> list = new ArrayList<Object>();
-							field.set(instance, list);
-							for (String referenceName : (List<String>)propertieEntry.getValue()) {
-								Object reference = createOrUseInstance(Class.forName(bagType.getAssociatedEntityName((SessionFactoryImplementor) getSessionFactory())),referenceName);
-								list.add(reference);
+							if (propertieType instanceof MapType) {
+								@SuppressWarnings("unused")
+								MapType mapType = (MapType)propertieType;
+								@SuppressWarnings("unused")
+								Map map = new HashMap();
+								
+								MapKeyManyToMany keyMap = field.getAnnotation(MapKeyManyToMany.class);
+								CollectionOfElements valueCollection = field.getAnnotation(CollectionOfElements.class);
+								
+								ClassMetadata keyMetaData = getSessionFactory().getClassMetadata(keyMap.targetEntity());
+								
+								Type valueType = mapType.getElementType((SessionFactoryImplementor)getSessionFactory());
+								
+								
+								for (Entry<Object,Object> entry : ((Map<Object,Object>)propertieEntry.getValue()).entrySet()) {
+									Object value;
+									Object key;
+									if (valueType.isEntityType()) {
+										value = createOrUseInstance(valueCollection.targetElement(),(String)entry.getValue());
+									} else {
+										value = entry.getValue();
+									}
+								
+									if (keyMetaData!=null) {
+										key = createOrUseInstance(keyMap.targetEntity(),(String)entry.getKey());
+									} else {
+										key = entry.getKey();
+									}
+									
+									map.put(key, value);
+								}
+								field.set(instance, map);
+								
+							} else {
+								BagType bagType = (BagType)propertieType;
+								List<Object> list = new ArrayList<Object>();
+								field.set(instance, list);
+								for (String referenceName : (List<String>)propertieEntry.getValue()) {
+									Object reference = createOrUseInstance(Class.forName(bagType.getAssociatedEntityName((SessionFactoryImplementor) getSessionFactory())),referenceName);
+									list.add(reference);
+								}
 							}
 						} else {
 							Object value;
 							if (propertieType.isEntityType()) {
-								value = createOrUseInstance(entityClass,propertieEntry.getKey());								
+								value = createOrUseInstance(field.getType(),(String)propertieEntry.getValue());								
+							} else if (propertieType instanceof BigDecimalType) {
+								value = new BigDecimal((double)propertieEntry.getValue());
 							} else {
 								value = propertieEntry.getValue(); 
 							}
@@ -89,19 +131,27 @@ public class YamlFixtures implements Fixture {
 						field.setAccessible(isAccessible);
 					}
 					
-				} catch (Exception e) {
+				} catch (Throwable e) {
 					throw new RuntimeException("Some error", e);
 				}
 			}			
 		}
+		checkForAlias();
+		entityManager.flush();
 		for (Entry<String, Object> entry: objects.entrySet()) {
 			Object mergedObject = entityManager.merge(entry.getValue());
 			objects.put(entry.getKey(),mergedObject);
 		}
-		System.out.println("teste");
-		
 	}
 	
+	private void checkForAlias() {
+		for (Entry<String,Object> entry: references.entrySet()) {
+			if (!objects.containsKey(entry.getKey())) {
+				throw new RuntimeException("Alias "+entry.getKey()+" is referenced but not is defined");
+			}
+		}
+	}
+
 	@SuppressWarnings("unchecked")
 	protected Object createOrUseInstance(Class entityClass, String key) throws IllegalArgumentException, InstantiationException, IllegalAccessException, InvocationTargetException, SecurityException, NoSuchMethodException {
 		if (!references.containsKey(key)) {
