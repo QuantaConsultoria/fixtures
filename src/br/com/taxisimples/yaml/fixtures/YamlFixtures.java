@@ -124,10 +124,12 @@ public class YamlFixtures implements Fixture {
 							if (propertieType.isEntityType()) {
 								value = createOrUseInstance(field.getType(),(String)propertieEntry.getValue());								
 							} else if (propertieType instanceof BigDecimalType) {
-								value = new BigDecimal((double)propertieEntry.getValue());
+								value = new BigDecimal((Double)propertieEntry.getValue());
+							} else if (Enum.class.isAssignableFrom(field.getType())) {
+								value = Enum.valueOf((Class<Enum>)field.getType(), (String)propertieEntry.getValue());								
 							} else {
 								value = propertieEntry.getValue(); 
-							}
+							} 
 							field.set(instance, value);
 						}
 						field.setAccessible(isAccessible);
@@ -160,7 +162,7 @@ public class YamlFixtures implements Fixture {
 				if (entityClass.getSuperclass()!=null) {
 					return getField(entityClass.getSuperclass(), fieldName);
 				} else {
-					throw new RuntimeException("Field "+fieldName+" doesn´t exist");
+					throw new RuntimeException("Field "+fieldName+" doesnï¿½t exist");
 				}
 			}
 		}
@@ -175,7 +177,7 @@ public class YamlFixtures implements Fixture {
 	}
 
 	@SuppressWarnings("unchecked")
-	protected Object createOrUseInstance(Class entityClass, String key) throws IllegalArgumentException, InstantiationException, IllegalAccessException, InvocationTargetException, SecurityException, NoSuchMethodException {
+	protected Object createOrUseInstance(@SuppressWarnings("rawtypes") Class entityClass, String key) throws IllegalArgumentException, InstantiationException, IllegalAccessException, InvocationTargetException, SecurityException, NoSuchMethodException {
 		if (!references.containsKey(key)) {
 			Constructor<?> constructor = entityClass.getConstructor(new Class[] { });
 			Object instance = constructor.newInstance(new Object[] {});
