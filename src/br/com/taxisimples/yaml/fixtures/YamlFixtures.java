@@ -70,7 +70,9 @@ public class YamlFixtures implements Fixture {
 					for (Entry<String, Object> propertieEntry : entityEntry.getValue().entrySet()) {
 						
 						Type propertieType = entityMetaData.getPropertyType(propertieEntry.getKey());
-						Field field = entityClass.getDeclaredField(propertieEntry.getKey());
+						Field field;
+						field = getField(entityClass,propertieEntry.getKey());
+						
 						boolean isAccessible = field.isAccessible();
 						field.setAccessible(true);
 						
@@ -137,6 +139,9 @@ public class YamlFixtures implements Fixture {
 			}			
 		}
 		checkForAlias();
+		for (Object object :objects.values()) {
+			entityManager.persist(object);
+		}
 		entityManager.flush();
 		for (Entry<String, Object> entry: objects.entrySet()) {
 			Object mergedObject = entityManager.merge(entry.getValue());
@@ -144,6 +149,23 @@ public class YamlFixtures implements Fixture {
 		}
 	}
 	
+	@SuppressWarnings("rawtypes")
+	private Field getField(Class entityClass, String fieldName) {
+		try {
+			return entityClass.getDeclaredField(fieldName);
+		} catch (Throwable e) {
+			try {
+				return entityClass.getField(fieldName);
+			} catch (Throwable e2) {
+				if (entityClass.getSuperclass()!=null) {
+					return getField(entityClass.getSuperclass(), fieldName);
+				} else {
+					throw new RuntimeException("Field "+fieldName+" doesn´t exist");
+				}
+			}
+		}
+	}
+
 	private void checkForAlias() {
 		for (Entry<String,Object> entry: references.entrySet()) {
 			if (!objects.containsKey(entry.getKey())) {
