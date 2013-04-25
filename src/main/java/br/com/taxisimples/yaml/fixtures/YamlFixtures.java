@@ -1,10 +1,11 @@
 package br.com.taxisimples.yaml.fixtures;
 
-import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -24,6 +25,8 @@ import org.hibernate.engine.SessionFactoryImplementor;
 import org.hibernate.metadata.ClassMetadata;
 import org.hibernate.type.BagType;
 import org.hibernate.type.BigDecimalType;
+import org.hibernate.type.DateType;
+import org.hibernate.type.DoubleType;
 import org.hibernate.type.MapType;
 import org.hibernate.type.Type;
 import org.ho.yaml.Yaml;
@@ -51,16 +54,11 @@ public class YamlFixtures implements Fixture {
 		return (T)objects.get(name);
 	}
 
-	@Deprecated
-	public void addScenario(Object path, String resourceName) {
-		addScenario(path.getClass().getResourceAsStream(resourceName));
-	}
-	
 	@SuppressWarnings({"unchecked","rawtypes"})
 	@Override
-	public void addScenario(InputStream yamlFile) {
+	public void addScenario(Object path, String resourceName) {
 		
-		Map<String,Map<String,Map<String,Object>>> yamlFixtures = (Map<String, Map<String, Map<String,Object>>>) Yaml.load(yamlFile);
+		Map<String,Map<String,Map<String,Object>>> yamlFixtures = (Map<String, Map<String, Map<String,Object>>>) Yaml.load(path.getClass().getResourceAsStream(resourceName));
 		
 		for (Entry<String, Map<String, Map<String,Object>>> entityTypesEntry: yamlFixtures.entrySet()) {
 			ClassMetadata entityMetaData = getClassMetadata(entityTypesEntry.getKey());
@@ -133,6 +131,11 @@ public class YamlFixtures implements Fixture {
 								value = new BigDecimal((Double)propertieEntry.getValue());
 							} else if (Enum.class.isAssignableFrom(field.getType())) {
 								value = Enum.valueOf((Class<Enum>)field.getType(), (String)propertieEntry.getValue());								
+							} else if (propertieType instanceof DateType) {
+								DateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+								value = format.parse(propertieEntry.getValue().toString());
+							} else if (propertieType instanceof DoubleType) { 
+								value = Double.parseDouble(propertieEntry.getValue().toString());
 							} else {
 								value = propertieEntry.getValue(); 
 							} 
