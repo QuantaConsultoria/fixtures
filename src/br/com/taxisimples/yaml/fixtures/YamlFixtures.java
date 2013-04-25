@@ -4,6 +4,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,6 +25,8 @@ import org.hibernate.engine.SessionFactoryImplementor;
 import org.hibernate.metadata.ClassMetadata;
 import org.hibernate.type.BagType;
 import org.hibernate.type.BigDecimalType;
+import org.hibernate.type.DateType;
+import org.hibernate.type.DoubleType;
 import org.hibernate.type.MapType;
 import org.hibernate.type.Type;
 import org.ho.yaml.Yaml;
@@ -127,6 +131,11 @@ public class YamlFixtures implements Fixture {
 								value = new BigDecimal((Double)propertieEntry.getValue());
 							} else if (Enum.class.isAssignableFrom(field.getType())) {
 								value = Enum.valueOf((Class<Enum>)field.getType(), (String)propertieEntry.getValue());								
+							} else if (propertieType instanceof DateType) {
+								DateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+								value = format.parse(propertieEntry.getValue().toString());
+							} else if (propertieType instanceof DoubleType) { 
+								value = Double.parseDouble(propertieEntry.getValue().toString());
 							} else {
 								value = propertieEntry.getValue(); 
 							} 
