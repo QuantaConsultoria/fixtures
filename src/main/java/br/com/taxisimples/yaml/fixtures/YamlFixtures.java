@@ -1,5 +1,6 @@
 package br.com.taxisimples.yaml.fixtures;
 
+import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -54,11 +55,15 @@ public class YamlFixtures implements Fixture {
 		return (T)objects.get(name);
 	}
 
+	public void addScenario(Object path, String resourceName) {
+		addScenario(path.getClass().getResourceAsStream(resourceName));
+	}
+	
 	@SuppressWarnings({"unchecked","rawtypes"})
 	@Override
-	public void addScenario(Object path, String resourceName) {
+	public void addScenario(InputStream yaml) {
 		
-		Map<String,Map<String,Map<String,Object>>> yamlFixtures = (Map<String, Map<String, Map<String,Object>>>) Yaml.load(path.getClass().getResourceAsStream(resourceName));
+		Map<String,Map<String,Map<String,Object>>> yamlFixtures = (Map<String, Map<String, Map<String,Object>>>) Yaml.load(yaml);
 		
 		for (Entry<String, Map<String, Map<String,Object>>> entityTypesEntry: yamlFixtures.entrySet()) {
 			ClassMetadata entityMetaData = getClassMetadata(entityTypesEntry.getKey());
