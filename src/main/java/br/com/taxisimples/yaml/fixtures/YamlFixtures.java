@@ -72,9 +72,9 @@ public class YamlFixtures implements Fixture {
 			Object mergedObject = entityManager.merge(entry.getValue());
 			objects.put(entry.getKey(),mergedObject);
 		}
-		for (Object object :objects.values()) {
-			entityManager.refresh(object);
-		}
+		//for (Object object :objects.values()) {
+		//	entityManager.refresh(object);
+		//}
 		
 	}
 	
