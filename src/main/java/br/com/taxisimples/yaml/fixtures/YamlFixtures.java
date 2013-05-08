@@ -54,14 +54,25 @@ public class YamlFixtures implements Fixture {
 	public <T> T load(String name) {
 		return (T)objects.get(name);
 	}
-
-	public void addScenario(Object path, String resourceName) {
-		addScenario(path.getClass().getResourceAsStream(resourceName));
+	
+	@Override
+	public void addScenario(InputStream... yamls) {
+		for (InputStream yaml: yamls) {
+			addScenario(yaml);
+		}
+		checkForAlias();
+		for (Object object :objects.values()) {
+			entityManager.persist(object);
+		}
+		entityManager.flush();
+		for (Entry<String, Object> entry: objects.entrySet()) {
+			Object mergedObject = entityManager.merge(entry.getValue());
+			objects.put(entry.getKey(),mergedObject);
+		}
 	}
 	
 	@SuppressWarnings({"unchecked","rawtypes"})
-	@Override
-	public void addScenario(InputStream yaml) {
+	protected void addScenario(InputStream yaml) {
 		
 		Map<String,Map<String,Map<String,Object>>> yamlFixtures = (Map<String, Map<String, Map<String,Object>>>) Yaml.load(yaml);
 		
@@ -153,15 +164,6 @@ public class YamlFixtures implements Fixture {
 					throw new RuntimeException("Some error", e);
 				}
 			}			
-		}
-		checkForAlias();
-		for (Object object :objects.values()) {
-			entityManager.persist(object);
-		}
-		entityManager.flush();
-		for (Entry<String, Object> entry: objects.entrySet()) {
-			Object mergedObject = entityManager.merge(entry.getValue());
-			objects.put(entry.getKey(),mergedObject);
 		}
 	}
 	
