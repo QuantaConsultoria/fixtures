@@ -74,99 +74,112 @@ public class YamlFixtures implements Fixture {
 	@SuppressWarnings({"unchecked","rawtypes"})
 	protected void addScenario(InputStream yaml) {
 		
-		Map<String,Map<String,Map<String,Object>>> yamlFixtures = (Map<String, Map<String, Map<String,Object>>>) Yaml.load(yaml);
-		
-		for (Entry<String, Map<String, Map<String,Object>>> entityTypesEntry: yamlFixtures.entrySet()) {
-			ClassMetadata entityMetaData = getClassMetadata(entityTypesEntry.getKey());
-			for (Entry<String, Map<String,Object>> entityEntry : entityTypesEntry.getValue().entrySet()) {
-				if (objects.containsKey(entityEntry.getKey())) {
-					throw new RuntimeException("Fixture name "+entityEntry.getKey()+" is alread used.");
-				}
-				try {
-					Class entityClass = Class.forName(entityMetaData.getEntityName());
-					Object instance = createOrUseInstance(entityClass,entityEntry.getKey());
-					objects.put(entityEntry.getKey(), instance);
-					
-					for (Entry<String, Object> propertieEntry : entityEntry.getValue().entrySet()) {
-						
-						Type propertieType = entityMetaData.getPropertyType(propertieEntry.getKey());
-						Field field;
-						field = getField(entityClass,propertieEntry.getKey());
-						
-						boolean isAccessible = field.isAccessible();
-						field.setAccessible(true);
-						
-						if (propertieType.isCollectionType()) {
-							if (propertieType instanceof MapType) {
-								@SuppressWarnings("unused")
-								MapType mapType = (MapType)propertieType;
-								@SuppressWarnings("unused")
-								Map map = new HashMap();
-								
-								MapKeyManyToMany keyMap = field.getAnnotation(MapKeyManyToMany.class);
-								CollectionOfElements valueCollection = field.getAnnotation(CollectionOfElements.class);
-								
-								ClassMetadata keyMetaData = getSessionFactory().getClassMetadata(keyMap.targetEntity());
-								
-								Type valueType = mapType.getElementType((SessionFactoryImplementor)getSessionFactory());
-								
-								
-								for (Entry<Object,Object> entry : ((Map<Object,Object>)propertieEntry.getValue()).entrySet()) {
-									Object value;
-									Object key;
-									if (valueType.isEntityType()) {
-										value = createOrUseInstance(valueCollection.targetElement(),(String)entry.getValue());
-									} else {
-										value = entry.getValue();
-									}
-								
-									if (keyMetaData!=null) {
-										key = createOrUseInstance(keyMap.targetEntity(),(String)entry.getKey());
-									} else {
-										key = entry.getKey();
-									}
-									
-									map.put(key, value);
-								}
-								field.set(instance, map);
-								
-							} else {
-								BagType bagType = (BagType)propertieType;
-								List<Object> list = new ArrayList<Object>();
-								field.set(instance, list);
-								for (String referenceName : (List<String>)propertieEntry.getValue()) {
-									Object reference = createOrUseInstance(Class.forName(bagType.getAssociatedEntityName((SessionFactoryImplementor) getSessionFactory())),referenceName);
-									list.add(reference);
-								}
-							}
-						} else {
-							Object value;
-							if (propertieType.isEntityType()) {
-								value = createOrUseInstance(field.getType(),(String)propertieEntry.getValue());								
-							} else if (propertieType instanceof BigDecimalType) {
-								value = new BigDecimal((Double)propertieEntry.getValue());
-							} else if (Enum.class.isAssignableFrom(field.getType())) {
-								value = Enum.valueOf((Class<Enum>)field.getType(), (String)propertieEntry.getValue());								
-							} else if (propertieType instanceof DateType) {
-								DateFormat format = new SimpleDateFormat("yyyy-MM-dd");
-								value = format.parse(propertieEntry.getValue().toString());
-							} else if (propertieType instanceof DoubleType) { 
-								value = Double.parseDouble(propertieEntry.getValue().toString());
-							} else {
-								value = propertieEntry.getValue(); 
-							} 
-							field.set(instance, value);
-						}
-						field.setAccessible(isAccessible);
+		try {
+			Map<String,Map<String,Map<String,Object>>> yamlFixtures = (Map<String, Map<String, Map<String,Object>>>) Yaml.load(yaml);
+			mapClassWithAlias(yamlFixtures);
+			
+			for (Entry<String, Map<String, Map<String,Object>>> entityTypesEntry: yamlFixtures.entrySet()) {
+				ClassMetadata entityMetaData = getClassMetadata(entityTypesEntry.getKey());
+				for (Entry<String, Map<String,Object>> entityEntry : entityTypesEntry.getValue().entrySet()) {
+					if (objects.containsKey(entityEntry.getKey())) {
+						throw new RuntimeException("Fixture name "+entityEntry.getKey()+" is alread used.");
 					}
-					
-				} catch (Throwable e) {
-					throw new RuntimeException("Some error", e);
-				}
-			}			
+						Class entityClass = Class.forName(entityMetaData.getEntityName());
+						Object instance = createOrUseInstance(entityClass,entityEntry.getKey());
+						objects.put(entityEntry.getKey(), instance);
+						
+						for (Entry<String, Object> propertieEntry : entityEntry.getValue().entrySet()) {
+							
+							Type propertieType = entityMetaData.getPropertyType(propertieEntry.getKey());
+							Field field;
+							field = getField(entityClass,propertieEntry.getKey());
+							
+							boolean isAccessible = field.isAccessible();
+							field.setAccessible(true);
+							
+							if (propertieType.isCollectionType()) {
+								if (propertieType instanceof MapType) {
+									@SuppressWarnings("unused")
+									MapType mapType = (MapType)propertieType;
+									@SuppressWarnings("unused")
+									Map map = new HashMap();
+									
+									MapKeyManyToMany keyMap = field.getAnnotation(MapKeyManyToMany.class);
+									CollectionOfElements valueCollection = field.getAnnotation(CollectionOfElements.class);
+									
+									ClassMetadata keyMetaData = getSessionFactory().getClassMetadata(keyMap.targetEntity());
+									
+									Type valueType = mapType.getElementType((SessionFactoryImplementor)getSessionFactory());
+									
+									
+									for (Entry<Object,Object> entry : ((Map<Object,Object>)propertieEntry.getValue()).entrySet()) {
+										Object value;
+										Object key;
+										if (valueType.isEntityType()) {
+											value = createOrUseInstance(valueCollection.targetElement(),(String)entry.getValue());
+										} else {
+											value = entry.getValue();
+										}
+									
+										if (keyMetaData!=null) {
+											key = createOrUseInstance(keyMap.targetEntity(),(String)entry.getKey());
+										} else {
+											key = entry.getKey();
+										}
+										
+										map.put(key, value);
+									}
+									field.set(instance, map);
+									
+								} else {
+									BagType bagType = (BagType)propertieType;
+									List<Object> list = new ArrayList<Object>();
+									field.set(instance, list);
+									for (String referenceName : (List<String>)propertieEntry.getValue()) {
+										Object reference = createOrUseInstance(Class.forName(bagType.getAssociatedEntityName((SessionFactoryImplementor) getSessionFactory())),referenceName);
+										list.add(reference);
+									}
+								}
+							} else {
+								Object value;
+								if (propertieType.isEntityType()) {
+									value = createOrUseInstance(field.getType(),(String)propertieEntry.getValue());								
+								} else if (propertieType instanceof BigDecimalType) {
+									value = new BigDecimal((Double)propertieEntry.getValue());
+								} else if (Enum.class.isAssignableFrom(field.getType())) {
+									value = Enum.valueOf((Class<Enum>)field.getType(), (String)propertieEntry.getValue());								
+								} else if (propertieType instanceof DateType) {
+									DateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+									value = format.parse(propertieEntry.getValue().toString());
+								} else if (propertieType instanceof DoubleType) { 
+									value = Double.parseDouble(propertieEntry.getValue().toString());
+								} else {
+									value = propertieEntry.getValue(); 
+								} 
+								field.set(instance, value);
+							}
+							field.setAccessible(isAccessible);
+						}
+						
+				}			
+			}
+		} catch (Throwable e) {
+			throw new RuntimeException("Some error", e);
 		}
 	}
 	
+	private void mapClassWithAlias(
+			Map<String, Map<String, Map<String, Object>>> yamlFixtures) throws ClassNotFoundException, IllegalArgumentException, InstantiationException, IllegalAccessException, InvocationTargetException, SecurityException, NoSuchMethodException {
+		for(String className: yamlFixtures.keySet()) {
+			ClassMetadata entityMetaData = getClassMetadata(className);
+			Class entityClass = Class.forName(entityMetaData.getEntityName());
+			for (String alias: yamlFixtures.get(className).keySet()) {
+				createOrUseInstance(entityClass, alias);
+			}
+		}
+		
+	}
+
 	@SuppressWarnings("rawtypes")
 	private Field getField(Class entityClass, String fieldName) {
 		try {
