@@ -4,6 +4,7 @@ import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.ParameterizedType;
 import java.math.BigDecimal;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -14,7 +15,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import javax.annotation.Resource;
-import javax.persistence.Embedded;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceContext;
@@ -25,6 +25,7 @@ import org.hibernate.annotations.MapKeyManyToMany;
 import org.hibernate.ejb.HibernateEntityManagerFactory;
 import org.hibernate.engine.SessionFactoryImplementor;
 import org.hibernate.metadata.ClassMetadata;
+import org.hibernate.persister.entity.Joinable;
 import org.hibernate.type.BagType;
 import org.hibernate.type.BigDecimalType;
 import org.hibernate.type.ComponentType;
@@ -71,6 +72,10 @@ public class YamlFixtures implements Fixture {
 			Object mergedObject = entityManager.merge(entry.getValue());
 			objects.put(entry.getKey(),mergedObject);
 		}
+		for (Object object :objects.values()) {
+			entityManager.refresh(object);
+		}
+		
 	}
 	
 	@SuppressWarnings({"unchecked","rawtypes"})
@@ -168,8 +173,24 @@ public class YamlFixtures implements Fixture {
 		BagType bagType = (BagType)hibernateType;
 		List<Object> list = new ArrayList<Object>();
 		field.set(instance, list);
+		
+		Class bagTypeClass = null; 
+		boolean isBagAssociated = false;
+		try {
+			bagTypeClass = Class.forName(bagType.getAssociatedEntityName((SessionFactoryImplementor) getSessionFactory()));
+			isBagAssociated = true;
+		} catch (Exception e) {
+			isBagAssociated = false;
+			bagTypeClass = (Class) ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[0];
+		}
+		
 		for (String referenceName : (List<String>)object) {
-			Object reference = createOrUseInstance(Class.forName(bagType.getAssociatedEntityName((SessionFactoryImplementor) getSessionFactory())),referenceName);
+			Object reference;
+			if (isBagAssociated) {
+				reference = createOrUseInstance(bagTypeClass ,referenceName);
+			} else {
+				reference = referenceName;
+			}
 			list.add(reference);
 		}
 	}
