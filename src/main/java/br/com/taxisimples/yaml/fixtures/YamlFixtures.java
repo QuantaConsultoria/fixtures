@@ -25,12 +25,12 @@ import org.hibernate.annotations.MapKeyManyToMany;
 import org.hibernate.ejb.HibernateEntityManagerFactory;
 import org.hibernate.engine.SessionFactoryImplementor;
 import org.hibernate.metadata.ClassMetadata;
-import org.hibernate.persister.entity.Joinable;
 import org.hibernate.type.BagType;
 import org.hibernate.type.BigDecimalType;
 import org.hibernate.type.ComponentType;
 import org.hibernate.type.DateType;
 import org.hibernate.type.DoubleType;
+import org.hibernate.type.LongType;
 import org.hibernate.type.MapType;
 import org.hibernate.type.Type;
 import org.ho.yaml.Yaml;
@@ -141,6 +141,8 @@ public class YamlFixtures implements Fixture {
 		} else if (hibernateType instanceof DateType) {
 			DateFormat format = new SimpleDateFormat("yyyy-MM-dd");
 			value = format.parse(objectValue.toString());
+		} else if (hibernateType instanceof LongType) { 
+			value = Long.valueOf(((Double)objectValue).longValue());
 		} else if (hibernateType instanceof DoubleType) { 
 			value = Double.parseDouble(objectValue.toString());
 		} else {
