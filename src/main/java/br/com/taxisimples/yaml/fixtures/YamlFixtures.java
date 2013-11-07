@@ -142,7 +142,7 @@ public class YamlFixtures implements Fixture {
 			DateFormat format = new SimpleDateFormat("yyyy-MM-dd");
 			value = format.parse(objectValue.toString());
 		} else if (hibernateType instanceof LongType) { 
-			value = Long.valueOf(((Double)objectValue).longValue());
+			value = Long.valueOf(objectValue.toString());
 		} else if (hibernateType instanceof DoubleType) { 
 			value = Double.parseDouble(objectValue.toString());
 		} else {
