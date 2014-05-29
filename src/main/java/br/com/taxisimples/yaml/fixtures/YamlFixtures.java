@@ -1,5 +1,6 @@
 package br.com.taxisimples.yaml.fixtures;
 
+import java.beans.PropertyDescriptor;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -32,6 +33,7 @@ import org.hibernate.type.LongType;
 import org.hibernate.type.MapType;
 import org.hibernate.type.Type;
 import org.ho.yaml.Yaml;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -53,7 +55,22 @@ public class YamlFixtures implements Fixture {
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> T load(String name) {
-		return (T)objects.get(name);
+		T t = (T)objects.get(name);
+		if (entityManager.contains(t)) {
+			entityManager.refresh(t);			
+		} else {
+			t = loadEntity(t);
+		}
+		return t;
+	}
+	
+	private <T> T loadEntity(T t) {
+		return (T) entityManager.find(t.getClass(), getId(t));
+	}
+	
+	public Object getId(Object object) {
+		PropertyDescriptor propertyDescriptor = BeanUtils.getPropertyDescriptor(object.getClass(), "id");
+		return propertyDescriptor.getValue("id");
 	}
 	
 	@Override
