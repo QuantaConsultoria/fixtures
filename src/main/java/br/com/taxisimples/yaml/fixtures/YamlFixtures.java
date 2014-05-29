@@ -13,12 +13,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
 import javax.annotation.Resource;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceContext;
-
 import org.hibernate.SessionFactory;
 import org.hibernate.annotations.CollectionOfElements;
 import org.hibernate.annotations.MapKeyManyToMany;
@@ -275,7 +273,6 @@ public class YamlFixtures implements Fixture {
 			Constructor<?> constructor = entityClass.getConstructor(new Class[] { });
 			Object instance = constructor.newInstance(new Object[] {});
 			references.put(key,instance);
-			entityManager.persist(instance);
 		}
 		return references.get(key);
 	}
