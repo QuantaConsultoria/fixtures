@@ -14,10 +14,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+
 import javax.annotation.Resource;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceContext;
+
+import org.dbunit.database.statement.IBatchStatement;
 import org.hibernate.SessionFactory;
 import org.hibernate.annotations.CollectionOfElements;
 import org.hibernate.annotations.MapKeyManyToMany;
@@ -65,12 +68,30 @@ public class YamlFixtures implements Fixture {
 	}
 	
 	private <T> T loadEntity(T t) {
-		return (T) entityManager.find(t.getClass(), getId(t));
+		return (T) entityManager.find(t.getClass(), getId(t, t.getClass()));
 	}
 	
-	public Object getId(Object object) {
-		PropertyDescriptor propertyDescriptor = BeanUtils.getPropertyDescriptor(object.getClass(), "id");
-		return propertyDescriptor.getValue("id");
+	public Object getId(Object object, Class type) {
+		try {
+			try {
+				return getIdByReflection(object, type.getDeclaredField("id"));
+			} catch (Exception e) {
+				return getIdByReflection(object, type.getField("id"));
+			}
+		} catch (Exception e) {
+			if (Object.class.equals(object.getClass())) {
+				throw new RuntimeException("The object must have a id property", e);				
+			} else {
+				return getId(object, object.getClass().getSuperclass());
+			}
+		}
+	}
+	
+	protected Object getIdByReflection(Object object, Field field) throws IllegalArgumentException, IllegalAccessException {
+		field.setAccessible(true);
+		Object idValue = field.get(object);
+		field.setAccessible(false);
+		return idValue;
 	}
 	
 	@Override
@@ -270,7 +291,7 @@ public class YamlFixtures implements Fixture {
 				if (entityClass.getSuperclass()!=null) {
 					return getField(entityClass.getSuperclass(), fieldName);
 				} else {
-					throw new RuntimeException("Field "+fieldName+" doesn�t exist");
+					throw new RuntimeException("Field "+fieldName+" doesn't exist");
 				}
 			}
 		}
