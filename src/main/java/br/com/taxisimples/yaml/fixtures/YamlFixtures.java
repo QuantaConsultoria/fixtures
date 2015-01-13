@@ -1,14 +1,11 @@
 package br.com.taxisimples.yaml.fixtures;
 
-import java.beans.PropertyDescriptor;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.math.BigDecimal;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -20,7 +17,6 @@ import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceContext;
 
-import org.dbunit.database.statement.IBatchStatement;
 import org.hibernate.SessionFactory;
 import org.hibernate.annotations.CollectionOfElements;
 import org.hibernate.annotations.MapKeyManyToMany;
@@ -34,10 +30,12 @@ import org.hibernate.type.DateType;
 import org.hibernate.type.DoubleType;
 import org.hibernate.type.LongType;
 import org.hibernate.type.MapType;
+import org.hibernate.type.TimestampType;
 import org.hibernate.type.Type;
 import org.ho.yaml.Yaml;
-import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+
+import br.com.taxisimples.yaml.fixtures.serializer.DateDeserializer;
 
 @Service
 public class YamlFixtures implements Fixture {
@@ -174,9 +172,8 @@ public class YamlFixtures implements Fixture {
 			value = new BigDecimal((Double)objectValue);
 		} else if (Enum.class.isAssignableFrom(field.getType())) {
 			value = Enum.valueOf((Class<Enum>)field.getType(), (String)objectValue);								
-		} else if (hibernateType instanceof DateType) {
-			DateFormat format = new SimpleDateFormat("yyyy-MM-dd");
-			value = format.parse(objectValue.toString());
+		} else if (hibernateType instanceof DateType || hibernateType instanceof TimestampType) {
+			value = new DateDeserializer().deserialize(objectValue);
 		} else if (hibernateType instanceof LongType) { 
 			value = Long.valueOf(objectValue.toString());
 		} else if (hibernateType instanceof DoubleType) { 
