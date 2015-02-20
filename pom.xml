@@ -2,12 +2,13 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>br.com.taxisimples.yaml.fixtures</groupId>
   <artifactId>fixtures</artifactId>
-  <version>0.0.7-SNAPSHOT</version>
+  <version>0.0.8-SNAPSHOT</version>
   
   <properties>
 		<java.version>1.7</java.version>
 		<br.com.caelum.version>3.4.1</br.com.caelum.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<org.hibernate.version>4.3.8.Final</org.hibernate.version>
 	</properties>
   
   <build>
@@ -40,18 +41,23 @@
   	<dependency>
   		<groupId>org.hibernate.javax.persistence</groupId>
   		<artifactId>hibernate-jpa-2.1-api</artifactId>
-  		<version>1.0.0.Draft-16</version>
+  		<version>1.0.0.Final</version>
   	</dependency>
   	<dependency>
   		<groupId>org.hibernate</groupId>
   		<artifactId>hibernate-core</artifactId>
-  		<version>3.6.10.Final</version>
+  		<version>${org.hibernate.version}</version>
   	</dependency>
   	<dependency>
   		<groupId>org.hibernate</groupId>
   		<artifactId>hibernate-entitymanager</artifactId>
-  		<version>3.6.10.Final</version>
+  		<version>${org.hibernate.version}</version>
   	</dependency>
+  	<dependency>
+	    <groupId>org.hibernate</groupId>
+	    <artifactId>hibernate-annotations</artifactId>
+	    <version>3.5.6-Final</version>
+	</dependency>
   	<dependency>
   		<groupId>org.springframework</groupId>
   		<artifactId>spring-context</artifactId>

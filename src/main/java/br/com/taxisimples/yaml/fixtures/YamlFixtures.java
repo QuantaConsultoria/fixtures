@@ -21,7 +21,7 @@ import org.hibernate.SessionFactory;
 import org.hibernate.annotations.CollectionOfElements;
 import org.hibernate.annotations.MapKeyManyToMany;
 import org.hibernate.ejb.HibernateEntityManagerFactory;
-import org.hibernate.engine.SessionFactoryImplementor;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.metadata.ClassMetadata;
 import org.hibernate.type.BagType;
 import org.hibernate.type.BigDecimalType;
