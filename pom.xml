@@ -2,14 +2,14 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>br.com.taxisimples.yaml.fixtures</groupId>
   <artifactId>fixtures</artifactId>
-  <version>0.0.7-SNAPSHOT</version>
-  
+  <version>0.0.8</version>
+
   <properties>
 		<java.version>1.7</java.version>
 		<br.com.caelum.version>3.4.1</br.com.caelum.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
-  
+
   <build>
   	<plugins>
   		<plugin>
@@ -26,6 +26,41 @@
 			</plugin>
   	</plugins>
   </build>
+  <pluginRepositories>
+    <pluginRepository>
+      <id>codehaus-snapshots</id>
+      <name>Codehaus Snapshots</name>
+      <url>http://nexus.codehaus.org/snapshots/</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+    </pluginRepository>
+    <pluginRepository>
+      <id>quanta-repository-plugins</id>
+      <name>Quanta Repository Plugins</name>
+      <url>http://homologacao.quantaconsultoria.com:8081/nexus/content/groups/public/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+    </pluginRepository>
+  </pluginRepositories>
+  <repositories>
+    <repository>
+      <id>quanta-repository</id>
+      <name>Quanta Repository</name>
+      <layout>default</layout>
+      <url>http://homologacao.quantaconsultoria.com:8081/nexus/content/groups/public/</url>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
+  <distributionManagement>
+    <repository>
+      <id>quanta-repository</id>
+      <url>http://homologacao.quantaconsultoria.com:8081/nexus/content/repositories/quanta-repository</url>
+    </repository>
+  </distributionManagement>
   <dependencies>
   	<dependency>
   		<groupId>org.jyaml</groupId>

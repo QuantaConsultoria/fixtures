@@ -8,17 +8,20 @@ import java.lang.reflect.ParameterizedType;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
 import javax.annotation.Resource;
+import javax.persistence.EmbeddedId;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceContext;
 
 import org.hibernate.SessionFactory;
 import org.hibernate.annotations.CollectionOfElements;
+import org.hibernate.annotations.Immutable;
 import org.hibernate.annotations.MapKeyManyToMany;
 import org.hibernate.ejb.HibernateEntityManagerFactory;
 import org.hibernate.engine.SessionFactoryImplementor;
@@ -42,6 +45,7 @@ public class YamlFixtures implements Fixture {
 
 	private Map<String,Object> objects = new HashMap<String, Object>();
 	private Map<String,Object> references = new HashMap<String, Object>();
+	private List<YamlObjectFixtures> yamlObjects = new ArrayList<YamlObjectFixtures>();
 	
 	@Resource
 	protected EntityManagerFactory emf;
@@ -74,7 +78,11 @@ public class YamlFixtures implements Fixture {
 			try {
 				return getIdByReflection(object, type.getDeclaredField("id"));
 			} catch (Exception e) {
-				return getIdByReflection(object, type.getField("id"));
+				try{
+					return getIdByReflection(object, type.getField("id"));
+				}catch(Exception ee){
+					return getEmbeddedId(object, type);
+				}
 			}
 		} catch (Exception e) {
 			if (Object.class.equals(object.getClass())) {
@@ -85,6 +93,34 @@ public class YamlFixtures implements Fixture {
 		}
 	}
 	
+	private Object getEmbeddedId(Object object, Class type) throws IllegalArgumentException, IllegalAccessException {
+		Field field = getEmbeddedField(type);
+		if(field != null){
+			field.setAccessible(true);
+			Object obj = field.get(object);
+			field.setAccessible(false);
+			return obj;
+		}
+		throw new RuntimeException("The object does not have embedded id");
+	}
+
+	private Field getEmbeddedField(Class type) {
+		for(Field field : type.getDeclaredFields()){
+			if(field.isAnnotationPresent(EmbeddedId.class)){
+				return field;
+			}
+		}
+		if(type.getSuperclass() != null){
+			for(Field field : type.getSuperclass().getDeclaredFields()){
+				if(field.isAnnotationPresent(EmbeddedId.class)){
+					return field;
+				}
+			}
+			
+		}
+		return null;
+	}
+
 	protected Object getIdByReflection(Object object, Field field) throws IllegalArgumentException, IllegalAccessException {
 		field.setAccessible(true);
 		Object idValue = field.get(object);
@@ -98,20 +134,122 @@ public class YamlFixtures implements Fixture {
 			addScenario(yaml);
 		}
 		checkForAlias();
-		for (Object object :objects.values()) {
-			entityManager.persist(object);
+		Map<String, Object> notImmutables = getValuesNotImmutable(objects); 
+		for (Object object : notImmutables.values()) {
+			if(!isImmutable(object.getClass().getName())){
+				entityManager.persist(object);
+			}
 		}
 		entityManager.flush();
+		
+		updatePKIds();
+		
+		Map<String, Object> immutables = getValuesImmutable(objects); 
+		for (Object object : immutables.values()) {
+			if(!isImmutable(object.getClass().getName())){
+				updateImmutableValue(object);
+				entityManager.persist(object);
+			}
+		}
+		entityManager.flush();
+		
 		for (Entry<String, Object> entry: objects.entrySet()) {
 			Object mergedObject = entityManager.merge(entry.getValue());
 			objects.put(entry.getKey(),mergedObject);
 		}
-		//for (Object object :objects.values()) {
-		//	entityManager.refresh(object);
-		//}
-		
+	}
+
+	private void updatePKIds() {
+		try{
+			for(YamlObjectFixtures yamlObject : this.yamlObjects){
+				Iterator<Entry<String, Object>> iterator = yamlObject.getYamlValue().entrySet().iterator();
+				while(iterator.hasNext()){
+					Entry<String, Object> entry = iterator.next();
+					Object object = this.objects.get(entry.getValue());
+					if(object != null){
+						entry.setValue(getId(object, object.getClass()));
+					}
+				}
+				boolean isAccessible = yamlObject.getField().isAccessible();
+				yamlObject.getField().setAccessible(true);
+				yamlObject.getField().set(yamlObject.getInstance(), parseEmbbed(yamlObject.getField().getType(), yamlObject.getYamlValue(), (ComponentType) yamlObject.getHibernateType()));
+				yamlObject.getField().setAccessible(isAccessible);
+			}
+		}catch(Exception e){
+			throw new RuntimeException(e.getMessage());
+		}
+	}
+
+	private Map<String,Object> getValuesNotImmutable(Map<String,Object> values) {
+		Map<String,Object> objects = new HashMap<String, Object>();
+		Iterator<Entry<String, Object>> iterator = values.entrySet().iterator();
+		while (iterator.hasNext()) {
+			Entry<String, Object> entry = iterator.next();
+			if(!hasFieldImmutable(entry.getValue())){
+				objects.put(entry.getKey(), entry.getValue());
+			}
+		}
+		return objects;
 	}
 	
+	private Map<String,Object> getValuesImmutable(Map<String,Object> values) {
+		Map<String,Object> objects = new HashMap<String, Object>();
+		Iterator<Entry<String, Object>> iterator = values.entrySet().iterator();
+		while (iterator.hasNext()) {
+			Entry<String, Object> entry = iterator.next();
+			if(hasFieldImmutable(entry.getValue())){
+				objects.put(entry.getKey(), entry.getValue());
+			}
+		}
+		return objects;
+	}
+
+	private boolean hasFieldImmutable(Object object) {
+		boolean hasFildImmutable = false;
+		for(Field field : object.getClass().getDeclaredFields()){
+			if(!field.getType().isPrimitive() && isImmutable(field.getType().getName())){
+				hasFildImmutable = true;
+			}
+		}
+		if(object.getClass().getSuperclass() != null){
+			for(Field field : object.getClass().getSuperclass().getDeclaredFields()){
+				if(!field.getType().isPrimitive() && isImmutable(field.getType().getName())){
+					hasFildImmutable = true;
+				}
+			}
+			
+		}
+		return hasFildImmutable;
+	}
+
+	private void updateImmutableValue(Object object) {
+		try{
+			for(Field field : object.getClass().getDeclaredFields()){
+				if(!field.getType().isPrimitive() && isImmutable(field.getType().getName())){
+					updateImmutableField(field, object);
+				}
+			}
+			if(object.getClass().getSuperclass() != null){
+				for(Field field : object.getClass().getSuperclass().getDeclaredFields()){
+					if(!field.getType().isPrimitive() && isImmutable(field.getType().getName())){
+						updateImmutableField(field, object);
+					}
+				}
+				
+			}
+		}catch(Exception e){
+			throw new RuntimeException(e.getMessage());
+		}
+	}
+
+	private void updateImmutableField(Field field, Object instance) throws IllegalArgumentException, IllegalAccessException {
+		field.setAccessible(true);
+		if(field.get(instance) != null){
+			field.set(instance, loadEntity(field.get(instance)));
+		}
+		field.setAccessible(false);
+	}
+
 	@SuppressWarnings({"unchecked","rawtypes"})
 	protected void addScenario(InputStream yaml) {
 		
@@ -145,8 +283,6 @@ public class YamlFixtures implements Fixture {
 		}
 	}
 	
-	
-	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private Object parseEmbbed(Class clazz, Map<String, Object> valuesMap, ComponentType hibernateType) throws Exception {
 			Object instance = clazz.getConstructor(new Class[0]).newInstance();
@@ -158,7 +294,7 @@ public class YamlFixtures implements Fixture {
 		
 		return instance;
 	}
-	
+
 	private Type getHibernateType(String fieldName, ComponentType hibernateType) {
 		return hibernateType.getSubtypes()[hibernateType.getPropertyIndex(fieldName)];
 	}
@@ -167,7 +303,7 @@ public class YamlFixtures implements Fixture {
 	private void setPrimitivesValues(Field field, Object instance, Object objectValue, Type hibernateType) throws Exception {
 		Object value;
 		if (hibernateType.isEntityType()) {
-			value = createOrUseInstance(field.getType(),(String)objectValue);								
+			value = createOrUseInstance(field.getType(),(String)objectValue);
 		} else if (hibernateType instanceof BigDecimalType) {
 			value = new BigDecimal((Double)objectValue);
 		} else if (Enum.class.isAssignableFrom(field.getType())) {
@@ -180,10 +316,10 @@ public class YamlFixtures implements Fixture {
 			value = Double.parseDouble(objectValue.toString());
 		} else {
 			value = objectValue; 
-		} 
+		}
 		field.set(instance, value);
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	private void setValue(Field field, Object instance, Object object, Type hibernateType) throws Exception{
 		
@@ -197,11 +333,24 @@ public class YamlFixtures implements Fixture {
 				setListValues(field, instance, object, hibernateType);
 			}
 		} else if(hibernateType instanceof ComponentType) {
-			field.set(instance, parseEmbbed(field.getType(),(Map<String, Object>) object, (ComponentType) hibernateType));
+			if(field.isAnnotationPresent(EmbeddedId.class)){
+				yamlObjects.add(new YamlObjectFixtures(field, instance, (Map<String, Object>) object, hibernateType));
+			}else{
+				field.set(instance, parseEmbbed(field.getType(),(Map<String, Object>) object, (ComponentType) hibernateType));
+			}
 		} else {
 			setPrimitivesValues(field,instance,object,hibernateType);
 		}
 		field.setAccessible(isAccessible);
+	}
+
+	private boolean isImmutable(String className) {
+		try{
+			Class entityClass = Class.forName(className);
+			return entityClass.isAnnotationPresent(Immutable.class);
+		}catch(ClassNotFoundException e){
+			throw new RuntimeException(e.getMessage());
+		}
 	}
 
 	private void setListValues(Field field, Object instance, Object object, Type hibernateType) throws Exception {
