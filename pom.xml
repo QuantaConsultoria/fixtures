@@ -38,7 +38,7 @@
     <pluginRepository>
       <id>quanta-repository-plugins</id>
       <name>Quanta Repository Plugins</name>
-      <url>http://homologacao.quantaconsultoria.com:8081/nexus/content/groups/public/</url>
+      <url>http://homologacao.quantaconsultoria.com:8081/repository/maven-public/</url>
       <releases>
         <enabled>true</enabled>
       </releases>
@@ -49,7 +49,7 @@
       <id>quanta-repository</id>
       <name>Quanta Repository</name>
       <layout>default</layout>
-      <url>http://homologacao.quantaconsultoria.com:8081/nexus/content/groups/public/</url>
+      <url>http://homologacao.quantaconsultoria.com:8081/repository/maven-public/</url>
       <snapshots>
         <enabled>true</enabled>
       </snapshots>
@@ -58,7 +58,7 @@
   <distributionManagement>
     <repository>
       <id>quanta-repository</id>
-      <url>http://homologacao.quantaconsultoria.com:8081/nexus/content/repositories/quanta-repository</url>
+      <url>http://homologacao.quantaconsultoria.com:8081/repository/quanta-repository</url>
     </repository>
   </distributionManagement>
   <dependencies>
